@@ -1,23 +1,63 @@
+import sys
+import time
+from typing import NamedTuple
+
+import scrollphat
+from nrewebservices.ldbws import Session
+
 from trainer.settings import settings
 
-from nrewebservices.ldbws import Session
+
+class Train(NamedTuple):
+    scheduled: str
+    estimated: str
+
+
+class TrainFetcher:
+    def __init__(self) -> None:
+        self._session = Session(wsdl=settings.api_url, api_key=settings.api_key)
+
+    def get_next_train(self, origin: str, destination: str) -> Train | None:
+        before = time.perf_counter()
+        board = self._session.get_fastest_departures(
+            crs=origin,
+            destinations=[destination],
+        )
+
+        duration = time.perf_counter() - before
+        print(
+            f"Fetched departures from {board.location_name} in {duration:.2f} seconds"
+        )
+
+        service = board.next_departures[0].service
+        if service.std is None:
+            return None
+        return Train(scheduled=service.std, estimated=service.etd)
+
+
+SCROLL_PERIOD = 0.1
+POLL_PERIOD = 60
 
 
 def main():
+    tf = TrainFetcher()
+    scrollphat.set_brightness(1)
 
-    session = Session(wsdl=settings.api_url, api_key=settings.api_key)
-    board = session.get_station_board(
-        crs="SDH",
-        rows=50,
-        include_departures=True,
-        include_arrivals=False,
-        to_filter_crs="MYB",
-    )
+    try:
+        while True:
+            scrollphat.clear_buffer()
+            scrollphat.write_string(" ...")
+            scrollphat.update()
+            train = tf.get_next_train(origin=sys.argv[1], destination=sys.argv[2])
 
-    print(f"Departures from {board.location_name}:")
+            if train:
+                display = f"{train.scheduled} - {train.estimated}"
+            else:
+                display = "No Trains..."
 
-    for service in board.train_services:
-        print(f"{service.std}   {service.destination:30s} {service.etd:10s} {service.operator}")
-        # print(service.__dict__)
-        # {'origins': [<nrewebservices.ldbws.responses.ServiceLocation object at 0x7f0bf037edb0>], 'destinations': [<nrewebservices.ldbws.responses.ServiceLocation object at 0x7f0bf15772f0>], 'current_origins': [], 'current_destinations': [], 'sta': None, 'eta': None, 'std': 22:31, 'etd': On time, 'platform': 5, 'operator': Elizabeth Line, 'operator_code': XR, 'circular_route': False, 'cancelled': False, 'filter_location_cancelled': False, 'service_type': train, 'length': None, 'detach_front': False, 'reverse_formation': False, 'cancel_reason': None, 'delay_reason': None, 'service_id': 3791720STFD____, 'adhoc_alerts': None, 'rsid': None, 'formation': None, 'origin': 'Shenfield', 'destination': 'London Paddington'}
-        # {'origins': [<nrewebservices.ldbws.responses.ServiceLocation object at 0x7f0bf0127260>], 'destinations': [<nrewebservices.ldbws.responses.ServiceLocation object at 0x7f0bf0127560>], 'current_origins': [], 'current_destinations': [], 'sta': None, 'eta': None, 'std': 22:36, 'etd': On time, 'platform': 9, 'operator': Greater Anglia, 'operator_code': LE, 'circular_route': False, 'cancelled': False, 'filter_location_cancelled': False, 'service_type': train, 'length': 5, 'detach_front': False, 'reverse_formation': False, 'cancel_reason': None, 'delay_reason': None, 'service_id': 3794372STFD____, 'adhoc_alerts': None, 'rsid': None, 'formation': None, 'origin': 'Colchester Town', 'destination': 'London Liverpool Street'}
+            scrollphat.write_string(f"  {display} ")
+            for _ in range(int(POLL_PERIOD / SCROLL_PERIOD)):
+                scrollphat.scroll()
+                time.sleep(SCROLL_PERIOD)
+    finally:
+        scrollphat.clear()

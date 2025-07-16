@@ -6,10 +6,13 @@ readme = "README.md"
 authors = [
     { name = "Alex Pinkney", email = "apinkney97@gmail.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "nrewebservices>=0.2.1",
-    "pydantic-settings>=2.10.1",
+    #     "pydantic-settings>=2.8.1",
+    "scrollphat>=0.0.7",
+    "smbus>=1.1.post2",
+    "suds>=1.1.2",
 ]
 
 [project.scripts]
@@ -21,5 +24,18 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12.3",
+    "mypy>=1.17.0",
+    "ruff",
 ]
+
+[tool.ruff.lint]
+# Enable isort rules.
+extend-select = ["I"]
+
+[tool.mypy]
+files = ["src"]
+strict = true
+
+# [[tool.uv.index]]
+# name = "piwheels"
+# url = "https://www.piwheels.org/simple/"
