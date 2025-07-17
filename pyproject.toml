@@ -28,13 +28,20 @@ dev = [
     "ruff",
 ]
 
-[tool.ruff.lint]
-# Enable isort rules.
-extend-select = ["I"]
-
 [tool.mypy]
 files = ["src"]
 strict = true
+
+[[tool.mypy.overrides]]
+module = "scrollphat.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "nrewebservices.*"
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+extend-select = ["I"]
 
 # [[tool.uv.index]]
 # name = "piwheels"
